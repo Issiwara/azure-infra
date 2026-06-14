@@ -1,5 +1,5 @@
 # Terraform (azurerm) — Azure Architect v1.0
-# Generated: 2026-06-14T21:14:26.395Z
+# Generated: 2026-06-14T21:42:45.112Z
 
 terraform {
   required_providers {
@@ -41,5 +41,150 @@ resource "azurerm_virtual_network" "test_vnet" {
   resource_group_name = azurerm_resource_group.test_rg.name
   location            = var.location
   address_space       = ["10.0.0.0/16"]
+}
+
+# ⬡ Subnet [vnet: test-vnet]
+resource "azurerm_subnet" "subnet1" {
+  name                 = "subnet1"
+  resource_group_name  = azurerm_resource_group.test_rg.name
+  virtual_network_name = azurerm_virtual_network.test_vnet.name
+  address_prefixes     = ["10.0.1.0/24"]
+
+  depends_on = [azurerm_virtual_network.test_vnet]
+}
+
+# 🔒 NSG for vm1 (inbound: 22, 80, 443 | outbound: *)
+resource "azurerm_network_security_group" "vm1_nsg" {
+  name                = "vm1-nsg"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.test_rg.name
+
+  security_rule {
+    name                       = "inbound-allow-22"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "inbound-allow-80"
+    priority                   = 110
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "80"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "inbound-allow-443"
+    priority                   = 120
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "outbound-allow-all"
+    priority                   = 200
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
+  depends_on = [azurerm_resource_group.test_rg]
+
+  tags = {
+    managed_by = "azure-architect"
+  }
+}
+
+# 🌐 Public IP for vm1 (public subnet)
+resource "azurerm_public_ip" "vm1_pip" {
+  name                = "vm1-pip"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.test_rg.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+
+  depends_on = [azurerm_resource_group.test_rg]
+
+  tags = {
+    managed_by = "azure-architect"
+  }
+}
+
+# 🔌 Network Interface for vm1 [PUBLIC]
+resource "azurerm_network_interface" "vm1_nic" {
+  name                = "vm1-nic"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.test_rg.name
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.subnet1.id
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.vm1_pip.id
+  }
+
+  depends_on = [azurerm_public_ip.vm1_pip, azurerm_subnet.subnet1]
+}
+
+resource "azurerm_network_interface_security_group_association" "vm1_nsg_assoc" {
+  network_interface_id      = azurerm_network_interface.vm1_nic.id
+  network_security_group_id = azurerm_network_security_group.vm1_nsg.id
+
+  depends_on = [azurerm_network_interface.vm1_nic, azurerm_network_security_group.vm1_nsg]
+}
+
+# 💻 Virtual Machine [subnet: subnet1] [vnet: test-vnet] [rg: test-rg]
+resource "azurerm_linux_virtual_machine" "vm1" {
+  resource_group_name = azurerm_resource_group.test_rg.name
+  location            = var.location
+  name           = "vm1"
+  size           = "Standard_D2s_v3"
+  admin_username = "azureuser"
+
+  network_interface_ids = [
+    azurerm_network_interface.vm1_nic.id,
+  ]
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts"
+    version   = "latest"
+  }
+
+  admin_ssh_key {
+    username   = "azureuser"
+    public_key = file("./crud-key.pub")
+  }
+
+  depends_on = [azurerm_network_interface.vm1_nic]
+
+  tags = {
+    managed_by = "azure-architect"
+  }
 }
 

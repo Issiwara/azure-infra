@@ -1,0 +1,72 @@
+# .github/workflows/terraform-apply.yml
+# Runs ONLY when a PR is merged into main
+# Runs: init → plan → apply
+# Uses the 'production' environment for approval gate (optional)
+# State locked during apply — concurrent runs are blocked
+
+name: Terraform Apply
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.tf'
+      - '.github/workflows/terraform-apply.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    environment: production   # ← requires approval if configured
+
+    env:
+      ARM_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_CLIENT_SECRET:   ${{ secrets.AZURE_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.7"
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Validate
+        run: terraform validate -no-color
+
+      - name: Terraform Plan (pre-apply check)
+        run: |
+          terraform plan \
+            -no-color \
+            -input=false \
+            -out=tfplan
+
+      - name: Terraform Apply
+        run: |
+          terraform apply \
+            -auto-approve \
+            -input=false \
+            tfplan
+
+      - name: Print outputs
+        if: success()
+        run: |
+          echo "✅ Infrastructure deployed successfully"
+          terraform output || true
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed — check logs above"
+          echo "State lock will be released automatically"
+          exit 1

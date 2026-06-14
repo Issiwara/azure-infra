@@ -1,0 +1,16 @@
+cat > .gitignore << 'EOF'
+# Terraform state — never commit
+terraform.tfstate
+terraform.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+*.tfplan
+
+# SSH private key — never commit
+crud-key
+*.pem
+*.key
+
+# OS
+.DS_Store
+EOF

@@ -50,3 +50,18 @@ resource "azurerm_virtual_network" "test_vnet" {
     environment = "test"
   }
 }
+
+
+resource "azurerm_virtual_network" "test_vnet2" {
+  name                = "test-vnet2"
+  resource_group_name = azurerm_resource_group.test_rg.name
+  location            = var.location
+  address_space       = ["10.0.0.0/24"]
+
+  depends_on = [azurerm_resource_group.test_rg]
+
+  tags = {
+    managed_by  = "azure-architect"
+    environment = "test"
+  }
+}

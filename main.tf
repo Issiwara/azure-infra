@@ -1,5 +1,5 @@
-# main.tf — Azure Architect v1.0
-# State: stored in Azure Blob Storage with automatic locking
+# Terraform (azurerm) — Azure Architect v1.0
+# Generated: 2026-06-14T21:10:28.430Z
 
 terraform {
   required_providers {
@@ -9,11 +9,15 @@ terraform {
     }
   }
 
+  # Remote backend — state stored in Azure Blob Storage with automatic locking
+  # Note: ensure storage account enforces min_tls_version = "TLS1_2"
+  # TLS 1.0 and 1.1 were retired by Azure on 2026-02-03
   backend "azurerm" {
     resource_group_name  = "tfstate-rg"
     storage_account_name = "tfstateazarch001"
     container_name       = "tfstate"
     key                  = "prod.terraform.tfstate"
+    use_oidc             = true
   }
 }
 
@@ -25,43 +29,17 @@ variable "location" {
   default = "westeurope"
 }
 
-# Add your resources below — or export from Azure Architect and paste here
-
+# 📦 Resource Group
 resource "azurerm_resource_group" "test_rg" {
   name     = "test-rg"
   location = var.location
-
-  tags = {
-    managed_by  = "azure-architect"
-    environment = "test"
-  }
 }
 
+# 🌐 Virtual Network [rg: test-rg]
 resource "azurerm_virtual_network" "test_vnet" {
   name                = "test-vnet"
   resource_group_name = azurerm_resource_group.test_rg.name
   location            = var.location
   address_space       = ["10.0.0.0/16"]
-
-  depends_on = [azurerm_resource_group.test_rg]
-
-  tags = {
-    managed_by  = "azure-architect"
-    environment = "test"
-  }
 }
 
-
-resource "azurerm_virtual_network" "test_vnet2" {
-  name                = "test-vnet2"
-  resource_group_name = azurerm_resource_group.test_rg.name
-  location            = var.location
-  address_space       = ["10.0.0.0/24"]
-
-  depends_on = [azurerm_resource_group.test_rg]
-
-  tags = {
-    managed_by  = "azure-architect"
-    environment = "test"
-  }
-}

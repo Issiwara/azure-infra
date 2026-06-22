@@ -1,5 +1,5 @@
 # Terraform (azurerm) — Azure Architect v1.0
-# Generated: 2026-06-20T08:45:52.193Z
+# Generated: 2026-06-22T17:13:34.026Z
 
 terraform {
   required_providers {
@@ -53,7 +53,7 @@ resource "azurerm_subnet" "subnet1" {
   depends_on = [azurerm_virtual_network.vnet1]
 }
 
-# 🔒 NSG for vm1 (inbound: 22, 80, 443, 9000, 8080, 8000, 8081 | outbound: *)
+# 🔒 NSG for vm1 (inbound: 22, 80, 443, 9000, 8080, 8000, 8081, 4000 | outbound: *)
 resource "azurerm_network_security_group" "vm1_nsg" {
   name                = "vm1-nsg"
   location            = var.location
@@ -139,6 +139,18 @@ resource "azurerm_network_security_group" "vm1_nsg" {
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_range     = "8081"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "inbound-allow-4000"
+    priority                   = 170
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "4000"
     source_address_prefix      = "*"
     destination_address_prefix = "*"
   }

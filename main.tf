@@ -1,5 +1,5 @@
 # Terraform (azurerm) — Azure Architect v1.0
-# Generated: 2026-06-22T17:13:34.026Z
+# Generated: 2026-06-24T08:16:39.810Z
 
 terraform {
   required_providers {
